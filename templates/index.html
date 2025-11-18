@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Huffman Compressor</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #eceff1;
+      padding: 40px;
+    }
+
+    .box {
+      background: white;
+      width: 600px;
+      padding: 25px;
+      margin: auto;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+      text-align: center;
+    }
+
+    .upload-area {
+      border: 2px dashed #999;
+      padding: 20px;
+      border-radius: 10px;
+    }
+
+    button {
+      padding: 12px 25px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      margin: 10px;
+      cursor: pointer;
+      color: white;
+    }
+
+    .compress-btn {
+      background: #007bff;
+    }
+
+    .decompress-btn {
+      background: #28a745;
+    }
+
+    #status {
+      margin-top: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="box">
+    <h2>Huffman Compression / Decompression Tool</h2>
+
+    <div class="upload-area">
+      <input type="file" id="fileInput">
+    </div>
+
+    <br>
+
+    <button class="compress-btn" onclick="upload('/compress','compressed_output.txt')">Compress</button>
+    <button class="decompress-btn" onclick="upload('/decompress','decompressed_output.txt')">Decompress</button>
+
+    <div id="status"></div>
+  </div>
+
+  <script>
+    function base64ToBlob(b64, mime) {
+      const byteChars = atob(b64);
+      const arr = new Uint8Array(byteChars.length);
+      for (let i = 0; i < byteChars.length; i++) arr[i] = byteChars.charCodeAt(i);
+      return new Blob([arr], { type: mime || "application/octet-stream" });
+    }
+
+    function upload(endpoint, defaultName) {
+      const fileInput = document.getElementById("fileInput");
+      if (!fileInput.files.length) {
+        alert("Choose a file first"); return;
+      }
+
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+
+      const status = document.getElementById("status");
+      status.innerText = "Processing...";
+
+      fetch(endpoint, { method: "POST", body: formData })
+        .then(res => res.json())
+        .then(data => {
+          if (data.error) { status.innerText = data.error; return; }
+
+          // Show stats if present
+          if (data.original_bits !== undefined) {
+            status.innerHTML =
+              `Original: ${data.original_size} bytes<br>` +
+              `Compressed: ${data.compressed_size} bytes<br>` +
+              `Bits: ${data.original_bits} → ${data.compressed_bits}<br>` +
+              `Compression: ${data.percent}%`;
+          } else {
+            status.innerHTML = `Decompression done <br>Output: ${data.original_size} bytes`;
+          }
+
+          // Download returned file
+          const blob = base64ToBlob(data.filedata, data.mimetype);
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob);
+          a.download = data.filename || defaultName;
+          a.click();
+        })
+        .catch(err => {
+          console.error(err);
+          status.innerText = "Error ❌";
+        });
+    }
+  </script>
+
+
+</body>
+
+</html>
